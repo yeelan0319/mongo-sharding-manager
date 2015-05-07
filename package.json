@@ -1,0 +1,22 @@
+{
+  "name": "mongo-sharding-manager",
+  "version": "0.0.0",
+  "description": "Initiate and manage mongo sharding from one computer via SSH ",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "mongo",
+    "sharding",
+    "ssh"
+  ],
+  "author": "Yiran Mao <yiranmao@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "remote-exec": "0.0.3"
+  }
+}
