@@ -1,5 +1,7 @@
 var fs = require('fs'),
-	rexec = require('remote-exec');
+	async = require('async'),
+	rexec = require('remote-exec'),
+	readline = require('readline');
 
 var mongoLogo = [];
 mongoLogo.push("||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||");
@@ -41,7 +43,43 @@ console.log("");
 console.log("Version - 0.0.1");
 console.log("");
 
+function configureReplicaSet(){
+	var rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
 
+    console.log("=============STEP 1: Configure Replica Set=============");
+	rl.question("Do you already have replica set running? (Yes) ", function(b) {
+	    rl.close();
+	    var i = parseInt(b);
+	    if(isNaN(i))
+	    {
+	        if(typeof self.buildHash[b] !== 'undefined')
+	        {
+	            self.builds = [self.buildHash[b]];
+	        }
+	        else
+	        {
+	            self.fail("Invalid build target.");
+	        }
+	    }
+	    else
+	    {
+	        if(typeof self.builds[i] !== 'undefined')
+	        {
+	            self.builds = [self.builds[i]];
+	        }
+	        else
+	        {
+	            self.fail("Invalid build target.");
+	        }
+	    }
+	    self.go();
+	});
+}
+
+	
 var connection_options = {
 	port: 22,
 	username: "ubuntu",
