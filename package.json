@@ -18,6 +18,7 @@
   "license": "MIT",
   "dependencies": {
     "async": "^0.9.0",
-    "remote-exec": "0.0.3"
+    "remote-exec": "0.0.3",
+    "underscore": "^1.8.3"
   }
 }
