@@ -48,7 +48,7 @@ module.exports = function(connection_options, callback){
     	
     	console.log("Configuration! You have complete shard configuration. Your shard configuration is as following: ");
     	console.log(rs);
-    	callback(null, rs);
+    	callback(null, connection_options, rs);
     });
 
 	function queryIfRsExist(configureProcedureCallback){
@@ -100,7 +100,7 @@ module.exports = function(connection_options, callback){
 							host: secondary[0],
 							port: secondary[1]
 						})
-						next(null);
+						next();
 					});
 				}, function(err, secondary) {
 				  	if(err){
@@ -150,10 +150,10 @@ module.exports = function(connection_options, callback){
 			function(config, createRsCallback){
 				var configureRsScript = [
 					'hostname ' +  config.members[0].host,
-					'mongo --port ' + config.members[0].port + ' --eval "db.runCommand(rs.initiate())"',
-					'mongo --port ' + config.members[0].port + ' --eval "db.runCommand(rs.add(\'' + config.members[1].host + ':' + config.members[1].port + '\'))"',
-					'mongo --port ' + config.members[0].port + ' --eval "db.runCommand(rs.add(\'' + config.members[2].host + ':' + config.members[2].port + '\'))"',
-					'mongo --eval "db.runCommand(rs.status())"'
+					'mongo --port ' + config.members[0].port + ' --eval "db.runCommand(rs.initiate())" > /dev/null',
+					'mongo --port ' + config.members[0].port + ' --eval "db.runCommand(rs.add(\'' + config.members[1].host + ':' + config.members[1].port + '\'))" > /dev/null',
+					'mongo --port ' + config.members[0].port + ' --eval "db.runCommand(rs.add(\'' + config.members[2].host + ':' + config.members[2].port + '\'))" > /dev/null',
+                    'mongo --port ' + config.members[0].port + ' --eval "printjson(rs.status())"'
 				]
 				rexec(config.members[0].host, configureRsScript, connection_options, function(err){
 					if(err){

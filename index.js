@@ -1,21 +1,10 @@
-var fs = require('fs'),
-	path = require('path'),
-	_ = require("underscore"),
-	async = require('async'),
-	rexec = require('remote-exec'),
+var async = require('async'),
 	readline = require('readline'),
-	configureRs = require('./tasks/configureRs');
-
-var answerRegex = {
-	yes: /^[Y|y]([E|e][S|s])*$/,
-	no: /^[N|n]([O|o])*$/
-}
-var errorMsg = {
-	invalidInput: function(){
-		console.log("Error: Invalid Input");
-	}
-}
-var app = {};
+	configureConnectionInfo = require('./tasks/configureConnectionInfo'),
+	configureRs = require('./tasks/configureRs'),
+	configureConfigsvr = require('./tasks/configureConfigsvr'),
+	configureShard = require('./tasks/configureShard'),
+	message = require('./lib/message');
 
 var mongoLogo = [];
 mongoLogo.push('           |QQ.                                                                            ');
@@ -41,203 +30,38 @@ mongoLogo.push('            B~                                       Version - 0
 
 console.log("");
 console.log(mongoLogo.join("\n\r"));
-console.log("");
 
-configureConnectionInfo();
-
-function configureConnectionInfo(){
-	var rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout
-    });
-
-    function failHandler(err){
-		rl.close();
-		console.log(err);	
-	}
-
-	function completeHandler(){
-		rl.close();
-    	console.log("Configuration! You have complete connection configuration.");
-    	configureRs(app.connection_options, function(err, rs){
-    		if(err){
-    			return failHandler(err);
-    		}
-    		app.rs = rs;
-    		configureConfigsvr();
-    	});
-	}
-	console.log("=============Prerequisites=============");
-	async.series({
-		username: function(callback){
-			var defaultUsername = "root";
-			rl.question("Please specify the username that have root previlege(" + defaultUsername + "): ", function(username){
-				callback(null, username? username : defaultUsername);
-			});
-		},
-		privateKey: function(callback){
-			var defaultPrivateKeyPath = process.env['HOME'] + '/.ssh/id_rsa';
-			rl.question("Please specify the private key you use to login(" + defaultPrivateKeyPath + "): ", function(privateKeyPath){
-				callback(null, fs.readFileSync(privateKeyPath? privateKeyPath : defaultPrivateKeyPath));
-			});
-		}
-	}, 
-	function(err, connection_options){
-		if(err){
-			return failHandler(err);
-		}
-		app.connection_options = connection_options;
-		app.connection_options.port = 22;
-		completeHandler();
-	});
-}
-
-function configureConfigsvr(){
-	var rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout
-    });
-    var configsvrs = [];
-
-	console.log("=============STEP 2: Configure Config Server=============");
-	runConfigsvr();
-
-	function failHandler(err){
-		rl.close();
-		console.log(err);	
-	}
-
-	function completeHandler(){
-		rl.close();
-    	console.log("Configuration! You have started configure servers. Your configure server information is as following: ");
-    	console.log(configsvrs.join('\n\r'));
-    	app.configsvrs = configsvrs;
-    	configureShard();
-	}
-
-	function runConfigsvr(){
-		async.timesSeries(3, function(i, next){
-			console.log((i+1) + " of 3 configure servers");
-			async.series({
-				host: function(configureConfigsvrCallback){
-					rl.question("Please specify the host of the configure server: ", function(host){
-						if(!host){
-							return configureConfigsvrCallback(errorMsg.invalidInput());
-						}
-						configureConfigsvrCallback(null, host);
-					});
-				},
-				port: function(configureConfigsvrCallback){
-					rl.question("Please specify the port of the configure server: ", function(port){
-						if(!port){
-							return configureConfigsvrCallback(errorMsg.invalidInput());
-						}
-						configureConfigsvrCallback(null, port);
-					});
-				},
-				dbpath: function(configureConfigsvrCallback){
-					var defaultDbpath = "/data/configdb/";
-					rl.question("Please specify data storage path. (" + defaultDbpath + "): ", function(dbpath){
-						dbpath = dbpath? dbpath : defaultDbpath;
-						configureConfigsvrCallback(null, dbpath);
-					});
-				},
-				logpath: function(configureConfigsvrCallback){
-					var defaultLogpath = "/var/log/mongodb_config.log";
-					rl.question("Please specify log path. (" + defaultLogpath + "): ", function(logpath){
-						logpath = logpath? logpath : defaultLogpath;
-						configureConfigsvrCallback(null, logpath);
-					});
-				}
-			}, function(err, config){
+var rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+console.log("\n\nAvailable Tasks: ");
+console.log("#1. Initiate Mongo Shard");
+rl.question("\nPlease specify the task you want to run:", function(answer){
+	rl.close();
+	switch(answer){
+		case "1":
+			console.log("\n\n=============System Prerequisite=============");
+			console.log(message.instruction.systemPrerequsite);
+			console.log(message.instruction.previlegePrerequsite);
+			console.log(message.instruction.environmentPrerequsite);
+			async.waterfall([
+				configureConnectionInfo,
+				configureRs,
+				configureConfigsvr,
+				configureShard
+			], function(err, configsvrs){
 				if(err){
-					return next(err);
+					return console.log(err);
 				}
-				var runConfigsvrScript = [
-					'mkdir -p ' + config.dbpath,
-					'mkdir -p ' + path.dirname(config.logpath),
-					'touch ' + config.logpath,
-					'mongod --fork --logappend --logpath ' + config.logpath + " --dbpath " + config.dbpath + " --port " + config.port + " --configsvr > /dev/null"
-				];
-				rexec(config.host, runConfigsvrScript, app.connection_options, function(err){
-					if(err){
-						return next(err);
-					}
-					configsvrs.push(config.host + ":" + config.port);
-					next(null);
-				});
-			});
-		}, function(err) {
-		  	if(err){
-				return failHandler(err);
-			}
-			completeHandler();
-		});
+				console.log("Configuration! You have successfully configure mongo shard. You can now run: ");
+				console.log("");
+				console.log("mongos " + ' --configdb ' + configsvrs.join(","));
+				console.log("");
+				console.log("to link to your mongo shard. Remember enableSharding on database before sharding collection");
+			});	
+		break;
+		default:
+			console.log(message.error.invalidInput);
 	}
-}
-
-function configureShard(){
-	var rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout
-    });
-	console.log("=============STEP 3: Configure Shard=============");
-
-	function failHandler(err){
-		rl.close();
-		console.log(err);	
-	}
-
-	function completeHandler(){
-		rl.close();
-    	console.log("Configuration! You have successfully configure mongo shard. You can now run: ");
-    	console.log("");
-    	console.log("mongos " + ' --configdb ' + app.configsvrs.join(","));
-    	console.log("");
-    	console.log("to link to your mongo shard. Remember enableSharding on database before sharding collection");
-	}
-
-	async.series({
-		host: function(configureShardCallback){
-			rl.question("Please specify a host for temporary mongos router: ", function(host){
-				if(!host){
-					return configureShardCallback(errorMsg.invalidInput());
-				}
-				configureShardCallback(null, host);
-			});
-		},
-		port: function(configureShardCallback){
-			rl.question("Please specify a port for temporary mongos router: ", function(port){
-				if(!port){
-					return configureShardCallback(errorMsg.invalidInput());
-				}
-				configureShardCallback(null, port);
-			});
-		},
-		logpath: function(configureShardCallback){
-			var defaultLogpath = "/var/log/mongos.log";
-			rl.question("Please specify log path. (" + defaultLogpath + "): ", function(logpath){
-				logpath = logpath? logpath : defaultLogpath;
-				configureShardCallback(null, logpath);
-			});
-		}
-	}, function(err, config){
-		if(err){
-			return failHandler(err);
-		}
-		var configureShardScript = [
-			'mkdir -p ' + path.dirname(config.logpath),
-			'touch ' + config.logpath,
-			'mongos --fork --logappend --logpath ' + config.logpath + ' --port ' + config.port + ' --configdb ' + app.configsvrs.join(",")
-		];
-		_.each(app.rs, function(shard){
-			configureShardScript.push('mongo --port ' + config.port + ' --eval "db.runCommand(sh.addShard(\'' + shard.name + '/' + shard.member + '\'))"');
-		});
-		rexec(config.host, configureShardScript, app.connection_options, function(err){
-			if(err){
-				return failHandler(err);
-			}
-			completeHandler();
-		});
-	});
-}
+});		
