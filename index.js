@@ -1,9 +1,10 @@
 var fs = require('fs'),
+	path = require('path'),
+	_ = require("underscore"),
 	async = require('async'),
 	rexec = require('remote-exec'),
 	readline = require('readline'),
-	_ = require("underscore"),
-	path = require('path');
+	configureRs = require('./tasks/configureRs');
 
 var answerRegex = {
 	yes: /^[Y|y]([E|e][S|s])*$/,
@@ -17,33 +18,31 @@ var errorMsg = {
 var app = {};
 
 var mongoLogo = [];
-mongoLogo.push("#@##################################################");
-mongoLogo.push("#@S                                              S@#");
-mongoLogo.push("#@S                      {Q~                     S@#");
-mongoLogo.push("#@S                    -@#MM>                    S@#");
-mongoLogo.push("#@S                  -@#S#MSSM-                  S@#");
-mongoLogo.push("#@S                 ]@SSSSMSSSSM                 S@#");
-mongoLogo.push("#@S                ]SSSSSSMSSSSSM-               S@#");
-mongoLogo.push("#@S               |SSSSSSSMSSSSSSS~              S@#");
-mongoLogo.push("#@S              .@SSSSSSSSSSSSSSSS              S@#");
-mongoLogo.push("#@S              |SSSSSSSSSSSSSSSSS-             S@#");
-mongoLogo.push("#@S              |SSSSSSSSSSSSSSSSSo             S@#");
-mongoLogo.push("#@S              |SSSSSSSSSSSSSSSSSD             S@#");
-mongoLogo.push("#@S              |SSSSSSSSSSSSSSSSS-             S@#");
-mongoLogo.push("#@S              'SSSSSSSSSSSSSSSSU              S@#");
-mongoLogo.push("#@S               'SSSSSSSSSSSSSSS-              S@#");
-mongoLogo.push("#@S                'SSSSSSSSSSSSS^               S@#");
-mongoLogo.push("#@S                  TSSSSSSSSSB                 S@#");
-mongoLogo.push("#@S                    BSS@SSB^                  S@#");
-mongoLogo.push("#@S                      S#O^                    S@#");
-mongoLogo.push("#@S                       @U                     S@#");
-mongoLogo.push("#@S                       B~                     S@#");
-mongoLogo.push("##S                                              S@S");
-mongoLogo.push("#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@##");
+mongoLogo.push('           |QQ.                                                                            ');
+mongoLogo.push('         .QQQQQ#                                                                           ');
+mongoLogo.push('        @QQQQQQQQg                                                                         '); 
+mongoLogo.push('      ;QQQQQQQQQQQQ                                                                        ');
+mongoLogo.push('     {QQQQQQQQQQQQQQ,                        ___    _                          _           ');
+mongoLogo.push('    jQQQQQQQQQQQQQQQQ-               o O O  / __|  | |_     __ _      _ _   __| |          ');
+mongoLogo.push('   -QQQQQQQQQQQQQQQQQQ              o       \\__ \\  | ` \\   / _` |    | `_| / _` |          ');
+mongoLogo.push('   QQQQQQQQQQQQQQQQQQQh            TS__[O]  |___/  |_||_|  \\__,_|   _|_|_  \\__,_|          ');
+mongoLogo.push('   QQQQQQQQQQQQQQQQQQQQ           {======|_|"""""|_|"""""|_|"""""|_|"""""|_|"""""|         ');
+mongoLogo.push('   QQQQQQQQQQQQQQQQQQQQ          ./o--000""`-0-0-""`-0-0-""`-0-0-""`-0-0-""`-0-0-`         ');
+mongoLogo.push('   QQQQQQQQQQQQQQQQQQQQ                                                                    ');
+mongoLogo.push('   RQQQQQQQQQQQQQQQQQQR          __  __                            __ _                    ');        
+mongoLogo.push('    @QQQQQQQQQQQQQQQQQ          |  \\/  |  __ _    _ _     __ _    / _` |   ___      _ _    ');
+mongoLogo.push('     RQQQQQQQQQQQQQQQ*          | |\\/| | / _` |  | ` \\   / _` |   \\__, |  / -_)    | `_|   ');
+mongoLogo.push('      RQQQQQQQQQQQQR^           |_|__|_| \\__,_|  |_||_|  \\__,_|   |___/   \\___|   _|_|_    ');
+mongoLogo.push('       ^RQQQQQQQQQR             _|"""""|_|"""""|_|"""""|_|"""""|_|"""""|_|"""""|_|"""""|   ');
+mongoLogo.push('         \\RQQQQQR               "`-0-0-""`-0-0-""`-0-0-""`-0-0-""`-0-0-""`-0-0-""`-0-0-`   ');
+mongoLogo.push('           ^V^*                                                                            ');
+mongoLogo.push('            @U                                                                             ');
+mongoLogo.push('            B~                                       Version - 0.0.1                       ');
 
-console.log(mongoLogo.join("\n\r"));
-console.log("Shard Manager Version - 0.0.1");
 console.log("");
+console.log(mongoLogo.join("\n\r"));
+console.log("");
+
 configureConnectionInfo();
 
 function configureConnectionInfo(){
@@ -60,8 +59,15 @@ function configureConnectionInfo(){
 	function completeHandler(){
 		rl.close();
     	console.log("Configuration! You have complete connection configuration.");
-    	configureRs();
+    	configureRs(app.connection_options, function(err, rs){
+    		if(err){
+    			return failHandler(err);
+    		}
+    		app.rs = rs;
+    		configureConfigsvr();
+    	});
 	}
+	console.log("=============Prerequisites=============");
 	async.series({
 		username: function(callback){
 			var defaultUsername = "root";
@@ -84,218 +90,6 @@ function configureConnectionInfo(){
 		app.connection_options.port = 22;
 		completeHandler();
 	});
-}
-
-function configureRs(){
-	var rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout
-    });
-    var rs = [];
-
-	console.log("=============STEP 1: Configure Replica Set=============");
-	addRs();
-
-	function failHandler(err){
-		rl.close();
-		console.log(err);	
-	}
-
-	function completeHandler(){
-		rl.close();
-    	console.log("Configuration! You have complete shard configuration. Your shard configuration is as following: ");
-    	console.log(rs);
-    	app.rs = rs;
-    	configureConfigsvr();
-	}
-
-	function addRs(){
-		rl.question("Do you already have the replica set running? (Yes) ", function(answer) {
-			if(answerRegex.yes.test(answer) || answer === ''){
-		    	addExistingRs();
-		    }
-		    else if(answerRegex.no.test(answer)){
-		    	createRs();
-		    }
-		    else{
-				errorMsg.invalidInput();
-				addRs();
-		    }
-		});
-	}
-	function createRs(){
-		async.waterfall([
-			function(createRsCallback){
-				var config = {};
-				var defaultName = "rs" + rs.length;
-				rl.question("Please name the replica set(" + defaultName + "): ", function(name){
-					config.name = name? name : defaultName;
-					createRsCallback(null, config);
-				});
-			},
-			function(config, createRsCallback){
-				rl.question("Please specify the host:port running as primary member of the replica set: ", function(primary){
-					if(!primary){
-						callback(errorMsg.invalidInput());
-					}
-					config.primary = primary;
-					createRsCallback(null, config);
-				});
-			},
-			function(config, createRsCallback){
-				async.timesSeries(2, function(i, next){
-					console.log((i+1) + " of 2 secondary members");
-					rl.question("Please specify the host:port running as secondary member of the replica set: ", function(secondary){
-						if(!secondary){
-							createRsCallback(errorMsg.invalidInput());
-						}
-						next(null, secondary);
-					});
-				}, function(err, secondary) {
-				  	if(err){
-						createRsCallback(err);
-					}
-					config.secondary = secondary;
-					createRsCallback(null, config);
-				});
-			},
-			function(config, createRsCallback){
-				var defaultDbpath = "/data/" + config.name + "/";
-				rl.question("Please specify data storage path. (" + defaultDbpath + "): ", function(dbpath){
-					config.dbpath = dbpath? dbpath : defaultDbpath;
-					createRsCallback(null, config);
-				});
-			},
-			function(config, createRsCallback){
-				var defaultLogpath = "/var/log/mongodb_" + config.name + ".log";
-				rl.question("Please specify log path. (" + defaultLogpath + "): ", function(logpath){
-					config.logpath = logpath? logpath : defaultLogpath;
-					createRsCallback(null, config);
-				});
-			}
-		], 
-		function(err, config){
-			if(err){
-				return failHandler(err);
-			}
-			runRs(config, function(err, config){
-				if(err){
-					return failHandler(err);
-				}
-				var rsConf = {
-					name: config.name,
-					member: config.primary
-				};
-				rs.push(rsConf);
-				addMore();
-			});	
-		});
-	}
-
-	function runRs(config, callback){
-		console.log("Starting replica set " + config.name + "...");
-		// host info
-		var members = [];
-		var temp = config.primary.split(":");
-		members.push({
-			host: temp[0],
-			port: temp[1]
-		});
-		for(var i = 0; i < 2; i++){
-			temp = config.secondary[i].split(":");
-			members.push({
-				host: temp[0],
-				port: temp[1]
-			});
-		};
-
-		async.series([
-			function(runRsCallback){
-				async.timesSeries(members.length, function(i, next){
-					console.log("Start mongod on host " + members[i].host + "...");
-					var prepareRsScript = [
-						'mkdir -p ' + config.dbpath,
-						'mkdir -p ' + path.dirname(config.logpath),
-						'touch ' + config.logpath,
-						'mongod  --fork --replSet ' + config.name + " --logappend --logpath " + config.logpath + " --dbpath " + config.dbpath + " --port " + members[i].port + " --shardsvr > /dev/null"
-					];
-					rexec(members[i].host, prepareRsScript, app.connection_options, function(err){
-						if(err){
-							return next(err);
-						}
-						next();
-					});
-				}, function(err){
-					if(err){
-						return runRsCallback(err);
-					}
-					runRsCallback(null);
-				});
-			},
-			function(runRsCallback){
-				var rsConfig = {
-					_id: config.name,
-					members: []
-				}
-				_.each(members, function(member, i){
-					rsConfig.members.push({
-						host: member.host + ":" + member.port
-					});
-				});
-				var configureRsScript = [
-					'mongo --port ' + members[0].port + ' --eval "db.runCommand(rs.initiate(' + JSON.stringify(rsConfig) + '))"',
-					'mongo --eval "db.runCommand(rs.status())"'
-				]
-				rexec(members[0].host, configureRsScript, app.connection_options, function(err){
-					if(err){
-						runRsCallback(err);
-					}
-					runRsCallback(null);
-				});
-			}
-		], function(err){
-			if(err){
-				return failHandler(err);
-			}
-			console.log("Replica Set " + config.name + " started successfully!")
-			callback(null, config);
-		});
-	}
-	function addExistingRs(){
-		async.series({
-			name: function(callback){
-				rl.question("Please specify the name of the replica set: ", function(name){
-					callback(null, name);
-				});
-			},
-			member: function(callback){
-				rl.question("Please specify the member(host:port) of the replica set: ", function(member){
-					callback(null, member);
-				});
-			}
-		}, 
-		function(err, rsConf){
-			if(err){
-				return failHandler(err);
-			}
-			rs.push(rsConf);
-			addMore();
-		});
-	}
-	function addMore(){
-		rl.question("Do you want to add another shard? (Yes) ", function(answer) {
-			if(answerRegex.yes.test(answer) || answer === ''){
-		    	addRs();
-		    }
-		    else if(answerRegex.no.test(answer)){
-		    	completeHandler();
-		    }
-		    else{
-				errorMsg.invalidInput();
-				addMore();
-		    }
-		});
-	}
 }
 
 function configureConfigsvr(){
