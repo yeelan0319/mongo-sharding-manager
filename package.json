@@ -1,8 +1,24 @@
 {
   "name": "mongo-sharding-manager",
-  "version": "0.0.0",
-  "description": "Initiate and manage mongo sharding from one computer via SSH",
+  "description": "Initiate and manage mongo sharding from one centralize terminal via SSH",
   "main": "index.js",
+  "author": {
+    "name": "Yiran Mao"
+  },
+  "version": "0.9.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yeelan0319/mongo-sharding-manager.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yeelan0319/mongo-sharding-manager/issues"
+  },
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "https://github.com/yeelan0319/mongo-sharding-manager/blob/master/LICENSE"
+    }
+  ],
   "directories": {
     "test": "test"
   },
@@ -14,11 +30,10 @@
     "sharding",
     "ssh"
   ],
-  "author": "Yiran Mao <yiranmao@gmail.com>",
-  "license": "MIT",
   "dependencies": {
     "async": "^0.9.0",
     "remote-exec": "0.0.3",
+    "ssh2": "^0.4.8",
     "underscore": "^1.8.3"
   }
 }

@@ -1,10 +1,10 @@
 var async = require('async'),
 	readline = require('readline'),
-	configureConnectionInfo = require('./tasks/configureConnectionInfo'),
-	configureRs = require('./tasks/configureRs'),
-	configureConfigsvr = require('./tasks/configureConfigsvr'),
-	configureShard = require('./tasks/configureShard'),
-	message = require('./lib/message');
+	_ = require("underscore"),
+	message = require('./lib/message'),
+	initCluster = require('./tasks/initCluster');
+
+var tasks = [initCluster];
 
 var mongoLogo = [];
 mongoLogo.push('           |QQ.                                                                            ');
@@ -35,33 +35,18 @@ var rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
 });
+
 console.log("\n\nAvailable Tasks: ");
-console.log("#1. Initiate Mongo Shard");
-rl.question("\nPlease specify the task you want to run:", function(answer){
+_.each(tasks, function(task, i){
+	console.log("#" + (i+1) + ". " + task.name);
+});
+rl.question("\nPlease specify the task you want to run:", function(index){
 	rl.close();
-	switch(answer){
-		case "1":
-			console.log("\n\n=============System Prerequisite=============");
-			console.log(message.instruction.systemPrerequsite);
-			console.log(message.instruction.previlegePrerequsite);
-			console.log(message.instruction.environmentPrerequsite);
-			async.waterfall([
-				configureConnectionInfo,
-				configureRs,
-				configureConfigsvr,
-				configureShard
-			], function(err, configsvrs){
-				if(err){
-					return console.log(err);
-				}
-				console.log("Configuration! You have successfully configure mongo shard. You can now run: ");
-				console.log("");
-				console.log("mongos " + ' --configdb ' + configsvrs.join(","));
-				console.log("");
-				console.log("to link to your mongo shard. Remember enableSharding on database before sharding collection");
-			});	
-		break;
-		default:
-			console.log(message.error.invalidInput);
+	task = tasks[parseInt(index)-1];
+	if(task){
+		task.run();
+	}
+	else{
+		console.log(message.error.invalidInput);
 	}
 });		

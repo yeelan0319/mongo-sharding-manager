@@ -2,7 +2,7 @@ var async = require('async'),
 	rexec = require('remote-exec'),
 	readline = require('readline'),
 	path = require('path'),
-	meesage = require('../lib/message'),
+	message = require('../lib/message'),
 	validator = require('../lib/validator');
 
 module.exports = function(connection_options, callback){

@@ -2,7 +2,7 @@ var async = require('async'),
 	rexec = require('remote-exec'),
 	readline = require('readline'),
 	path = require('path'),
-	meesage = require('../lib/message');
+	message = require('../../lib/message');
 
 module.exports = function(connection_options, rs, callback){
 	var configsvrs = [];

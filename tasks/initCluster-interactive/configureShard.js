@@ -3,7 +3,7 @@ var async = require('async'),
 	readline = require('readline'),
 	path = require('path'),
 	_ = require("underscore"),
-	meesage = require('../lib/message');
+	message = require('../../lib/message');
 
 module.exports = function(connection_options, rs, configsvrs, callback){
 	var rl = readline.createInterface({
