@@ -1,11 +1,12 @@
 var async = require('async'),
 	path = require('path'),
-	//ssh2 = require('ssh2'),
 	_ = require("underscore"),
 	readline = require('readline'),
 	rexec = require('remote-exec'),
-	config = require("../config/cluster_config"),
-	message = require("../lib/message");
+	config = require('../config/cluster-config'),
+	message = require('../lib/message'),
+	initReplicaSet = require('./init-replicaset'),
+	monitorCluster = require('./monitor-cluster');
 
 function systemPrerequsite(){
 	console.log("\n\n=============System Prerequisite=============");
@@ -49,49 +50,19 @@ exports.run = function(){
 		},
 		//check if the mongo shard is already initiatated
 		function(initClusterCallback){
-			initClusterCallback(null, true);
+			monitorCluster.run(cluster, initClusterCallback);
 		},
 		//initiate replica set
-		function(shardNotInit, initClusterCallback){
-			if(!shardNotInit){
-				return completeHandler();
-			}
+		function(shStatus, initClusterCallback){
+			// if(!shStatus){
+			// 	// TODO: analysis
+			// 	return completeHandler();
+			// }
 
 			console.log("\n\n=============Configure Replica Set=============");
 			// TODOS: should be able to change this method to parallel one. Now if you run multiple on single server. It crashes.
 			async.mapSeries(replicaSets, function(rs, initReplicaSetCallback){
-				var name = rs.name;
-				async.map(rs.members, function(member, initShardsvrCallback){
-					var initShardsvrScript = [
-						'mkdir -p ' + member.dbpath,
-						'mkdir -p ' + path.dirname(member.logpath),
-						'touch ' + member.logpath,
-						'mongod --fork --replSet ' + name + " --logappend --logpath " + member.logpath + " --dbpath " + member.dbpath + " --port " + member.port + " --shardsvr > /dev/null"
-					];
-					rexec(member.host, initShardsvrScript, connection_options, function(err){
-						if(err){
-							return initShardsvrCallback(err);
-						}
-						initShardsvrCallback();
-					});
-				}, function(err){
-					if(err){
-						return initReplicaSetCallback(err);
-					}
-					var configureRsScript = [
-						'hostname ' +  rs.members[0].host,
-						'mongo --port ' + rs.members[0].port + ' --eval "db.runCommand(rs.initiate())" > /dev/null',
-						'mongo --port ' + rs.members[0].port + ' --eval "db.runCommand(rs.add(\'' + rs.members[1].host + ':' + rs.members[1].port + '\'))" > /dev/null',
-						'mongo --port ' + rs.members[0].port + ' --eval "db.runCommand(rs.add(\'' + rs.members[2].host + ':' + rs.members[2].port + '\'))" > /dev/null',
-					]
-					rexec(rs.members[0].host, configureRsScript, connection_options, function(err){
-						if(err){
-							initReplicaSetCallback(err);
-						}
-						console.log("Replica Set " + name + " started successfully!")
-						initReplicaSetCallback();
-					});
-				});
+				initReplicaSet.run(rs, initReplicaSetCallback);
 			}, function(err){
 				if(err){
 					return initClusterCallback(err);
