@@ -1,26 +1,32 @@
-var Client = require("ssh2").Client,
-		conn = new Client(),
-		connection_options = require('../config/cluster-config').connection_options;
+var Client = require('ssh2').Client,
+	connection_options = require('../config/cluster-config').connection_options;
 
 exports.run = function(rs, callback){
+	var conn = new Client();
 	var replicasetStatusCmd = 'mongo --port ' + rs.members[0].port + ' --eval "rs.status()"'
+  
   conn.on('ready', function() {
 		conn.exec(replicasetStatusCmd, function(err, stream) {
 	    if (err) {
 	    	throw err;
 	    }
-	    var rsStatus = '', errMsg = '';
+	    var rsStatus = '', 
+	    		errMsg = '';
 	    
 	    stream.setEncoding('utf8');
 	    stream.on('close', function(code, signal) {
 	      conn.end();
-	      if(errMsg){
-	      	return callback(null, errMsg);
+	      var res = {
+	      	code: code,
+	      	signal: signal,
+	      	msg: errMsg? errMsg : rsStatus
 	      }
-	      callback(null, rsStatus);
-	    }).on('data', function(data) {
+	      callback(null, res);
+	    })
+	    .on('data', function(data) {
 	      rsStatus += data;
-	    }).stderr.on('data', function(data) {
+	    })
+	    .stderr.on('data', function(data) {
 	      errMsg += data;
 	    });
 	  });

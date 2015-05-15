@@ -3,7 +3,8 @@ var async = require('async'),
 	_ = require("underscore"),
 	message = require('./lib/message'),
 	initCluster = require('./tasks/init-cluster'),
-	monitorCluster = require('./tasks/monitor-cluster');
+	monitorCluster = require('./tasks/monitor-cluster'),
+	config = require('./config/cluster-config');
 
 var tasks = [initCluster, monitorCluster];
 
@@ -31,23 +32,32 @@ mongoLogo.push('            B~                                       Version - 0
 
 console.log("");
 console.log(mongoLogo.join("\n\r"));
+selectTask();
 
-var rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-});
+function selectTask(){
+	var rl = readline.createInterface({
+	    input: process.stdin,
+	    output: process.stdout
+	});
+	console.log("\n\nAvailable Tasks (0 to exit): ");
+	_.each(tasks, function(task, i){
+		console.log("#" + (i+1) + ". " + task.name);
+	});
+	rl.question("\nPlease specify the task you want to run:", function(index){
+		rl.close();
+		if(index === "0") return;
 
-console.log("\n\nAvailable Tasks: ");
-_.each(tasks, function(task, i){
-	console.log("#" + (i+1) + ". " + task.name);
-});
-rl.question("\nPlease specify the task you want to run:", function(index){
-	rl.close();
-	task = tasks[parseInt(index)-1];
-	if(task){
-		task.run();
-	}
-	else{
-		console.log(message.error.invalidInput);
-	}
-});		
+		task = tasks[parseInt(index)-1];
+		if(task){
+			task.run(config.cluster, function(err, res){
+				console.log(res.msg);
+				console.log("=================================");
+				selectTask();
+			});
+		}
+		else{
+			console.log(message.error.invalidInput);
+		}
+	});	
+}
+	
