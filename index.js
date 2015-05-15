@@ -2,9 +2,10 @@ var async = require('async'),
 	readline = require('readline'),
 	_ = require("underscore"),
 	message = require('./lib/message'),
-	initCluster = require('./tasks/initCluster');
+	initCluster = require('./tasks/init-cluster'),
+	monitorCluster = require('./tasks/monitor-cluster');
 
-var tasks = [initCluster];
+var tasks = [initCluster, monitorCluster];
 
 var mongoLogo = [];
 mongoLogo.push('           |QQ.                                                                            ');

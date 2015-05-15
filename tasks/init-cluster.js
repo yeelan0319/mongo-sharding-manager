@@ -4,7 +4,7 @@ var async = require('async'),
 	_ = require("underscore"),
 	readline = require('readline'),
 	rexec = require('remote-exec'),
-	config = require("../config/cluster_config"),
+	config = require("../config/cluster-config"),
 	message = require("../lib/message");
 
 function systemPrerequsite(){
